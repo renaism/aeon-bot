@@ -12,6 +12,7 @@ else:
     logging.basicConfig(level=logging.INFO)
 
 bot = Bot()
+bot.load_extension('src.cogs.general')
 
 if __name__ == "__main__":
     bot.run(os.getenv("token"))
