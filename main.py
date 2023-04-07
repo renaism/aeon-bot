@@ -1,18 +1,17 @@
 import logging
-import os
+import config
+import discord
 
-from dotenv import load_dotenv
 from src import Bot
 
-load_dotenv()
 
-if os.getenv("env") == "production":
+if config.BotConfig.ENV == "production":
     logging.basicConfig(level=logging.WARNING)
 else:
     logging.basicConfig(level=logging.INFO)
 
-bot = Bot()
-bot.load_extension('src.cogs.general')
+intents = discord.Intents.all()
+bot = Bot(intents=intents)
 
 if __name__ == "__main__":
-    bot.run(os.getenv("token"))
+    bot.run(config.DiscordConfig.TOKEN)
