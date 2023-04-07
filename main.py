@@ -4,14 +4,18 @@ import discord
 
 from src import Bot
 
-
+# Setup logging
 if config.BotConfig.ENV == "production":
     logging.basicConfig(level=logging.WARNING)
 else:
     logging.basicConfig(level=logging.INFO)
 
+# Bot configurations
 intents = discord.Intents.all()
 bot = Bot(intents=intents)
+
+# Load cogs
+bot.load_extension('src.cogs.general')
 
 if __name__ == "__main__":
     bot.run(config.DiscordConfig.TOKEN)
