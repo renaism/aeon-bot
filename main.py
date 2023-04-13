@@ -16,6 +16,7 @@ bot = Bot(intents=intents)
 
 # Load cogs
 bot.load_extension('src.cogs.general')
+bot.load_extension('src.cogs.utility')
 
 if __name__ == "__main__":
     bot.run(config.DiscordConfig.TOKEN)
