@@ -17,9 +17,11 @@ class Utility(commands.Cog):
     )
     @discord.guild_only()
     @discord.default_permissions(move_members=True)
-    async def migratevc(self, ctx: discord.ApplicationContext,
-                        channel_to: discord.VoiceChannel,
-                        channel_from: discord.VoiceChannel | None = None):
+    async def migratevc(self,
+        ctx: discord.ApplicationContext,
+        channel_to: discord.VoiceChannel,
+        channel_from: discord.VoiceChannel | None = None
+    ):
         member = cast(discord.Member, ctx.user)
 
         # If no origin voice channel is specified,
