@@ -17,7 +17,7 @@ jobs:
           key: ${{ secrets.SSH_KEY }}
           port: ${{ secrets.SSH_PORT }}
           script: |
-            ls /srv/bot/weken-bot/
+            cd /srv/bot/weken-bot/
             sudo git checkout main
             sudo git pull
             docker stop weken-bot
