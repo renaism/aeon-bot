@@ -1,0 +1,28 @@
+name: deploy
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: execute commands on remote server using ssh
+        uses: appleboy/ssh-action@v0.1.10
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_KEY }}
+          port: ${{ secrets.SSH_PORT }}
+          script: |
+            ls /srv/bot/weken-bot/
+            sudo git checkout main
+            sudo git pull
+            docker stop weken-bot
+            docker rm -f weken-bot
+            docker image rm weken-bot
+            docker build -t weken-bot /srv/bot/weken-bot/
+            docker run -d --name weken-bot weken-bot
+      
