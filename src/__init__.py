@@ -1,3 +1,6 @@
 from .bot import Bot
+from .db import JSONDatabase
 
-__all__ = ["Bot"]
+db = JSONDatabase()
+
+__all__ = ["Bot", "db"]

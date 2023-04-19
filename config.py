@@ -10,3 +10,7 @@ class BotConfig(object):
 
 class DiscordConfig(object):
     TOKEN = os.getenv("TOKEN")
+
+class ActivityMonitorConfig(object):
+    # UPDATE_INTERVAL adjusted based on Discord rate limit on channel rename (5 min.)
+    UPDATE_INTERVAL = 360

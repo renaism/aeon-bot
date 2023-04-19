@@ -2,20 +2,29 @@ import discord
 import logging
 
 from collections import defaultdict
+from config import ActivityMonitorConfig
 from discord.ext import commands, tasks
+from src import db
 
-VC_WATCH_LIST = { 
-    1066691599070941214: "foo"
-}
 
 class ActivityMonitor(commands.Cog):
     def __init__(self, bot: discord.Bot):
         self.bot = bot
         self.vc_watch_list = []
+        
+        self.preferred_activity_names = db.get_data("preferredActivityNames")
+
+        if not self.preferred_activity_names:
+            self.preferred_activity_names = {}
+
+
+    @commands.Cog.listener()
+    async def on_ready(self):
         self.__update_vc_watch_list()
         self.update_vc_name_task.start()
-    
-    @tasks.loop(seconds=10.0)
+
+
+    @tasks.loop(seconds=ActivityMonitorConfig.UPDATE_INTERVAL)
     async def update_vc_name_task(self):
         logging.info("TASK STARTED: activity_monitor:update_vc_name_task")
 
@@ -29,9 +38,16 @@ class ActivityMonitor(commands.Cog):
                 continue
 
             await channel.edit(name=new_name)
-    
+
+
     def __update_vc_watch_list(self):
-        for id, default_name in VC_WATCH_LIST.items():
+        # Get voice channels from json file (temporary)
+        monitored_voice_channels = db.get_data("monitoredVoiceChannels")
+
+        for vc in monitored_voice_channels:
+            id = vc["id"]
+            default_name = vc["default_name"]
+
             channel = self.bot.get_channel(id)
             
             if not isinstance(channel, discord.VoiceChannel):
@@ -41,7 +57,8 @@ class ActivityMonitor(commands.Cog):
                 "channel": channel,
                 "default_name": default_name,
             })
-    
+
+
     def __get_new_vc_name(self, vc: discord.VoiceChannel, default_name: str) -> str:
         vc_members = vc.members
         
@@ -55,7 +72,11 @@ class ActivityMonitor(commands.Cog):
                 if not isinstance(activity, discord.Game):
                     continue
 
-                activity_count[activity.name] += 1
+                # Check if the activity has a preferred name
+                preferred_name = self.preferred_activity_names.get(activity.name)
+                activity_name = preferred_name or activity.name
+
+                activity_count[activity_name] += 1
             
         if len(activity_count) == 0:
             return default_name
@@ -64,14 +85,14 @@ class ActivityMonitor(commands.Cog):
                             reverse=True)
 
         if len(activities) == 1:
-            new_name = activities[0]
+            new_name = f"🎮 {activities[0]}"
         elif len(activities) == 2:
-            new_name = f"{activities[0]} & {activities[1]}"
+            new_name = f"🎮 {activities[0]} & {activities[1]}"
         else:
-            new_name = f"{activities[0]}, {activities[1]}, and more"
+            new_name = f"🎮 {activities[0]}, {activities[1]}, and more"
             
         return new_name
-            
+
 
 def setup(bot: discord.Bot):
     bot.add_cog(ActivityMonitor(bot))
