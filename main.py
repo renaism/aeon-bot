@@ -4,6 +4,7 @@ import discord
 
 from src import Bot
 
+
 # Setup logging
 if config.BotConfig.ENV == "production":
     logging.basicConfig(level=logging.WARNING)
@@ -17,6 +18,8 @@ bot = Bot(intents=intents)
 # Load cogs
 bot.load_extension('src.cogs.general')
 bot.load_extension('src.cogs.utility')
+bot.load_extension('src.cogs.activity_monitor')
+
 
 if __name__ == "__main__":
     bot.run(config.DiscordConfig.TOKEN)

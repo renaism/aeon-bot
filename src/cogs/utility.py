@@ -69,6 +69,7 @@ class Utility(commands.Cog):
 
         # Check if the user is in a voice channel
         voice_channel = get_member_voice_channel(member)
+        
         if voice_channel is None:
             return await ctx.respond(
                 "You are not in a voice channel!",
