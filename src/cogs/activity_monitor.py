@@ -69,7 +69,7 @@ class ActivityMonitor(commands.Cog):
 
         for member in vc_members:
             for activity in member.activities:
-                if not isinstance(activity, discord.Game):
+                if activity.type != discord.ActivityType.playing:
                     continue
 
                 # Check if the activity has a preferred name
