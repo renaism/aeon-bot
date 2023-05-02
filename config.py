@@ -17,3 +17,8 @@ class DiscordConfig(object):
 class ActivityMonitorConfig(object):
     # UPDATE_INTERVAL adjusted based on Discord rate limit on channel rename (5 min.)
     UPDATE_INTERVAL = float(os.getenv("UPDATE_INTERVAL", default=360))
+
+
+class WavelinkConfig(object):
+    URI = os.getenv("LAVALINK_URI", default="http://localhost:2333")
+    PASSWORD = os.getenv("LAVALINK_PASSWORD", default="youshallnotpass")

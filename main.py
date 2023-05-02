@@ -19,6 +19,7 @@ bot = Bot(intents=intents)
 bot.load_extension('src.cogs.general')
 bot.load_extension('src.cogs.utility')
 bot.load_extension('src.cogs.activity_monitor')
+bot.load_extension('src.cogs.music')
 
 
 if __name__ == "__main__":
