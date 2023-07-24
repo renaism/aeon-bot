@@ -227,27 +227,16 @@ class ActivityMonitor(commands.Cog):
         if not response:
             await api_error_response(ctx, response)
             return
-        
-        # Attempt to revert channel name to its default name
-        # Might fail because Discord rate limit
-        warnings = []
-
-        if channel.name != channel_data["default_name"]:
-            try:
-                await channel.edit(name=channel_data["default_name"])
-            except Exception:
-                warning_msg = f"Channel name has not been renamed to its default name ({channel_data['default_name']})."
-                warnings.append(warning_msg)
 
         embed_content = f"{channel.mention} is not being monitored anymore"
 
-        # Add warnings text
-        if len(warnings) > 0:
-            embed_content += "\n" + "\n".join([f"WARNING: {msg}" for msg in warnings])
-        
+        if channel.name != channel_data["default_name"]:
+            embed_content += f"\n\nChannel name is currently not the default ({channel_data['default_name']})." \
+                + "\nDon't forget to revert it yourself if necessary."
+
         embed = discord.Embed(
             title="Deleted Voice Channel",
-            description=embed_content,   
+            description=embed_content,
         )
 
         await ctx.respond(embed=embed)
