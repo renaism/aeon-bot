@@ -6,8 +6,7 @@ from discord.ext import commands, tasks
 from typing import cast
 
 from config import ActivityMonitorConfig
-from src import db
-from src.api import MonitoredVoiceChannelAPI
+from src.api import MonitoredVoiceChannelAPI, PreferredActivityNameApi
 from src.responses import api_error_response
 
 
@@ -20,10 +19,7 @@ class ActivityMonitor(commands.Cog):
 
     def __init__(self, bot: discord.Bot):
         self.bot = bot
-        self.preferred_activity_names = db.get_data("preferredActivityNames")
-
-        if not self.preferred_activity_names:
-            self.preferred_activity_names = {}
+        self.preferred_activity_names = defaultdict(dict)
 
 
     @commands.Cog.listener()
@@ -35,11 +31,26 @@ class ActivityMonitor(commands.Cog):
     async def update_vc_name_task(self):
         logging.info("TASK STARTED: activity_monitor:update_vc_name_task")
 
-        # Get all monitored voice channel
+        # Get all monitored voice channels
         response = MonitoredVoiceChannelAPI.List()
-        data = cast(list, response.json())
+        vc_data = cast(list, response.json())
 
-        for row in data:
+        # Get all preferred activity names
+        response = PreferredActivityNameApi.List()
+        an_data = cast(list, response.json())
+        self.preferred_activity_names = {}
+
+        # Map preferred activity names data per guild
+        self.preferred_activity_names = defaultdict(dict)
+
+        for row in an_data:
+            guild_id = row["guild_id"]
+            or_name = row["original_name"]
+            pr_name = row["preferred_name"]
+            self.preferred_activity_names[guild_id][or_name] = pr_name
+
+        # Update each voice channel name
+        for row in vc_data:
             channel = self.bot.get_channel(row["channel_id"])
 
             if not isinstance(channel, discord.VoiceChannel):
@@ -240,6 +251,147 @@ class ActivityMonitor(commands.Cog):
         )
 
         await ctx.respond(embed=embed)
+    
+
+    @activitymonitor.command(
+        description="List all preferred activity name on this server."
+    )
+    @discord.guild_only()
+    @discord.default_permissions(administrator=True)
+    async def listactivityname(self,
+        ctx: discord.ApplicationContext
+    ):
+        guild_id = cast(int, ctx.guild_id)
+
+        # Get list of preferred activity names
+        response = PreferredActivityNameApi.List(guild_id=guild_id)
+
+        # Request failed
+        if not response:
+            await api_error_response(ctx, response)
+            return
+        
+        data = cast(list, response.json())
+        contents = []
+
+        if len(data) == 0:
+            embed_content = "No preferred activity name on this server."
+        else:
+            embed_content = ""
+
+            for i, row in enumerate(data):
+                content = f"{i+1}. {row['original_name']} **->** {row['preferred_name']}"
+                contents.append(content)
+        
+        embed_content = "\n".join(contents)
+
+        embed = discord.Embed(
+            title="Preferred Activity Names",
+            description=embed_content
+        )
+
+        await ctx.respond(embed=embed)
+    
+    
+    @activitymonitor.command(
+        description="Add preferred activity name."
+    )
+    @discord.guild_only()
+    @discord.default_permissions(administrator=True)
+    async def addactivityname(self,
+        ctx: discord.ApplicationContext,
+        original_name: str,
+        preferred_name: str
+    ):
+        guild_id = cast(int, ctx.guild_id)
+
+        response = PreferredActivityNameApi.Create(
+            guild_id=guild_id,
+            original_name=original_name,
+            preferred_name=preferred_name
+        )
+
+        # Request failed
+        if not response:
+            await api_error_response(ctx, response)
+            return
+        
+        data = response.json()
+
+        embed_content = f"{data['original_name']} **->** {data['preferred_name']}"
+
+        embed = discord.Embed(
+            title="Added Preferred Activity Name",
+            description=embed_content
+        )
+
+        await ctx.respond(embed=embed)
+
+
+    @activitymonitor.command(
+        description="Edit preferred activity name."
+    )
+    @discord.guild_only()
+    @discord.default_permissions(administrator=True)
+    async def editactivityname(self,
+        ctx: discord.ApplicationContext,
+        original_name: str,
+        preferred_name: str
+    ):
+        guild_id = cast(int, ctx.guild_id)
+
+        response = PreferredActivityNameApi.Edit(
+            guild_id=guild_id,
+            original_name=original_name,
+            preferred_name=preferred_name
+        )
+
+        # Request failed
+        if not response:
+            await api_error_response(ctx, response)
+            return
+        
+        data = response.json()
+
+        embed_content = f"{data['original_name']} **->** {data['preferred_name']}"
+
+        embed = discord.Embed(
+            title="Edited Preferred Activity Name",
+            description=embed_content
+        )
+
+        await ctx.respond(embed=embed)
+
+
+    @activitymonitor.command(
+        description="Delete preferred activity name."
+    )
+    @discord.guild_only()
+    @discord.default_permissions(administrator=True)
+    async def deleteactivityname(self,
+        ctx: discord.ApplicationContext,
+        original_name: str
+    ):
+        guild_id = cast(int, ctx.guild_id)
+
+        response = PreferredActivityNameApi.Delete(
+            guild_id=guild_id,
+            original_name=original_name
+        )
+
+        # Request failed
+        if not response:
+            await api_error_response(ctx, response)
+            return
+        
+        embed_content = f"{original_name}"
+
+        embed = discord.Embed(
+            title="Deleted Preferred Activity Name",
+            description=embed_content
+        )
+
+        await ctx.respond(embed=embed)
 
 
     def __get_new_vc_name(self, 
@@ -247,6 +399,7 @@ class ActivityMonitor(commands.Cog):
         default_name: str,
         icon: str | None
     ) -> str:
+        guild_id = vc.guild.id
         vc_members = vc.members
         
         if len(vc_members) == 0:
@@ -260,8 +413,11 @@ class ActivityMonitor(commands.Cog):
                     continue
 
                 # Check if the activity has a preferred name
-                preferred_name = self.preferred_activity_names.get(activity.name)
-                activity_name = preferred_name or activity.name
+                if guild_id in self.preferred_activity_names:
+                    preferred_name = self.preferred_activity_names[guild_id].get(activity.name)
+                    activity_name = preferred_name or activity.name
+                else:
+                    activity_name = activity.name
 
                 activity_count[activity_name] += 1
             
