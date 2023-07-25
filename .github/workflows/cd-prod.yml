@@ -1,0 +1,67 @@
+name: Build and Deploy (Production)
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    name: Build and Publish Docker Image
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Checkout the repo
+        uses: actions/checkout@v3
+      
+      - name: Login to the container registry
+        uses: docker/login-action@v2
+        with:
+          registry: ${{ vars.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@v4
+        with:
+          images: ${{ vars.REGISTRY }}/${{ github.repository }}
+      
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+  deploy:
+    name: Deploy Package
+    runs-on: ubuntu-latest
+    environment: production
+    needs: build
+    env:
+      GITHUB_USERNAME: ${{ github.actor }}
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      TOKEN: ${{ secrets.TOKEN }}
+      API_KEY: ${{ secrets.API_KEY }}
+      API_URL: ${{ secrets.API_URL }}
+    steps:
+      - name: Deploy package to the remote server
+        uses: appleboy/ssh-action@v0.1.10
+        with:
+          host: ${{ secrets.SSH_VM1_HOST }}
+          username: ${{ secrets.SSH_VM1_USERNAME }}
+          key: ${{ secrets.SSH_VM1_KEY }}
+          port: ${{ secrets.SSH_VM1_PORT }}
+          envs: GITHUB_USERNAME, GITHUB_TOKEN, TOKEN, API_KEY, API_URL
+          script: |
+            docker login ghcr.io -u $GITHUB_USERNAME -p $GITHUB_TOKEN
+            docker pull ghcr.io/renaism/aeon-bot:main
+            docker image prune -f
+            docker stop aeon-bot
+            docker rm -fv aeon-bot
+            docker run --name aeon-bot -d \
+            -e TOKEN=$TOKEN \
+            -e API_KEY=$API_KEY \
+            -e API_URL=$API_URL \
+            ghcr.io/renaism/aeon-bot:main
