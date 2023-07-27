@@ -17,9 +17,9 @@ class General(commands.Cog):
         for cog_name, cog in self.bot.cogs.items():
             command_contents = []
 
-            for command in cog.get_commands():
+            for command in cog.walk_commands():
                 if isinstance(command, discord.SlashCommand):
-                    command_contents.append(f"`/{command.name}`: {command.description}")
+                    command_contents.append(f"{command.mention} {command.description}")
             
             if len(command_contents) > 0:
                 cog_content = f"**{cog_name}**\n"

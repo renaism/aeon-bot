@@ -61,6 +61,7 @@ jobs:
             docker stop aeon-bot
             docker rm -fv aeon-bot
             docker run --name aeon-bot -d \
+            --mount source=aeon-bot-ext,target=/app/ext \
             -e TOKEN=$TOKEN \
             -e API_KEY=$API_KEY \
             -e API_URL=$API_URL \
