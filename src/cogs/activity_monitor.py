@@ -10,6 +10,9 @@ from src.api import MonitoredVoiceChannelAPI, PreferredActivityNameApi
 from src.responses import api_error_response
 
 
+_log = logging.getLogger(__name__)
+
+
 class ActivityMonitor(commands.Cog):
     activitymonitor = discord.SlashCommandGroup(
         name="activitymonitor",
@@ -29,7 +32,7 @@ class ActivityMonitor(commands.Cog):
 
     @tasks.loop(seconds=ActivityMonitorConfig.UPDATE_INTERVAL)
     async def update_vc_name_task(self):
-        logging.info("TASK STARTED: activity_monitor:update_vc_name_task")
+        _log.info("TASK STARTED - update_vc_name_task")
 
         # Get all monitored voice channels
         response = MonitoredVoiceChannelAPI.List()
