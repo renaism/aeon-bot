@@ -8,6 +8,9 @@ from requests.exceptions import RequestException
 from config import APIConfig
 
 
+_log = logging.getLogger(__name__)
+
+
 class BaseAPI(ABC):
     endpoint: str = ""
     headers: dict = {
@@ -36,9 +39,8 @@ class BaseAPI(ABC):
         except RequestException as err:
             res_data = err.response.json() if err.response is not None else None
 
-            logging.error(
+            _log.exception(
                 "Unsuccessful API Request"
-                + f"\n\tDetail: {err}"
                 + f"\n\tParams: {params}"
                 + f"\n\tPayload: {payload}"
                 + f"\n\tResponse: {res_data}"
