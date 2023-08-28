@@ -14,6 +14,12 @@ class DiscordConfig(object):
     TOKEN = os.getenv("TOKEN")
 
 
+class APIConfig(object):
+    KEY = os.getenv("API_KEY")
+    URL = os.getenv("API_URL")
+    
+
+
 class ActivityMonitorConfig(object):
     # UPDATE_INTERVAL adjusted based on Discord rate limit on channel rename (5 min.)
     UPDATE_INTERVAL = float(os.getenv("UPDATE_INTERVAL", default=360))

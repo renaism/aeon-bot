@@ -47,15 +47,16 @@ class Music(commands.Cog):
         vc = await member_vc.connect(cls=wavelink.Player) # type: ignore
         
         # Search track from YouTube with the given search keyword
-        track = await wavelink.YouTubeTrack.search(search, return_first=True)
+        tracks = await wavelink.YouTubeTrack.search(search)
         
         # Check if no track is found from the given search keyword
-        if not track:
+        if not tracks:
             await ctx.respond(
                 "No track found."
             )
 
         # Play the track
+        track = tracks[0]
         await vc.play(track)
         await ctx.respond(f"Now playing: {track.title}\n{track.uri}")
 
