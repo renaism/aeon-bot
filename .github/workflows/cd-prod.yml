@@ -45,6 +45,8 @@ jobs:
       TOKEN: ${{ secrets.TOKEN }}
       API_KEY: ${{ secrets.API_KEY }}
       API_URL: ${{ secrets.API_URL }}
+      LAVALINK_URL: ${{ secrets.LAVALINK_URL }}
+      LAVALINK_PASSWORD: ${{ secrets.LAVALINK_PASSWORD }}
     steps:
       - name: Deploy package to the remote server
         uses: appleboy/ssh-action@v0.1.10
