@@ -26,5 +26,5 @@ class ActivityMonitorConfig(object):
 
 
 class WavelinkConfig(object):
-    URI = os.getenv("LAVALINK_URI", default="http://localhost:2333")
+    URI = os.getenv("LAVALINK_URL", default="http://localhost:2333")
     PASSWORD = os.getenv("LAVALINK_PASSWORD", default="youshallnotpass")

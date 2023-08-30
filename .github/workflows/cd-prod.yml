@@ -53,7 +53,7 @@ jobs:
           username: ${{ secrets.SSH_VM1_USERNAME }}
           key: ${{ secrets.SSH_VM1_KEY }}
           port: ${{ secrets.SSH_VM1_PORT }}
-          envs: GITHUB_USERNAME, GITHUB_TOKEN, TOKEN, API_KEY, API_URL
+          envs: GITHUB_USERNAME, GITHUB_TOKEN, TOKEN, API_KEY, API_URL, LAVALINK_URL, LAVALINK_PASSWORD
           script: |
             docker login ghcr.io -u $GITHUB_USERNAME -p $GITHUB_TOKEN
             docker pull ghcr.io/renaism/aeon-bot:main
@@ -65,4 +65,6 @@ jobs:
             -e TOKEN=$TOKEN \
             -e API_KEY=$API_KEY \
             -e API_URL=$API_URL \
+            -e LAVALINK_URL=$LAVALINK_URL \
+            -e LAVALINK_PASSWORD=$LAVALINK_PASSWORD \
             ghcr.io/renaism/aeon-bot:main
