@@ -21,6 +21,7 @@ cogs = [
     'src.cogs.general',
     'src.cogs.utility',
     'src.cogs.activity_monitor',
+    'src.cogs.music',
 ]
 
 
