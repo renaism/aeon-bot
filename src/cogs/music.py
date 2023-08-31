@@ -2,6 +2,7 @@ import discord
 import logging
 import wavelink
 
+from datetime import timedelta
 from discord.ext import commands
 from enum import Enum
 from typing import Any, cast
@@ -22,6 +23,7 @@ class PlayAction(Enum):
 class Player(wavelink.Player):
     def __init__(self, command_channel: discord.TextChannel, *args: Any, **kwargs: Any):
         super().__init__(*args, **kwargs)
+        self.autoplay = True
         self.command_channel = command_channel
 
 
@@ -52,6 +54,8 @@ class Music(commands.Cog):
             description=f"[{track.title}]({track.uri})"
         )
 
+        embed.set_footer(text=f"Length: {self.__format_track_length(track.length)}")
+
         await vc.command_channel.send(
             embed=embed
         )
@@ -71,7 +75,7 @@ class Music(commands.Cog):
             # Connect to the user voice channel if not connected yet
             player = Player(command_channel=cast(discord.TextChannel, ctx.channel))
             vc = await member_vc.connect(cls=player) # type: ignore
-            vc.autoplay = True
+            await vc.set_volume(WavelinkConfig.DEFAULT_VOLUME)
         else:
             # Check if the user is in the same voice channel as the bot
             check_user_same_vc = await self.__check_user_same_vc(ctx)
@@ -103,6 +107,8 @@ class Music(commands.Cog):
                 description=f"[{track.title}]({track.uri})"
             )
 
+            embed.set_footer(text=f"Length: {self.__format_track_length(track.length)}")
+
             await ctx.respond(embed=embed)
         elif action == PlayAction.NOW:
             if vc.current:
@@ -119,6 +125,8 @@ class Music(commands.Cog):
                 title=f"Added to {queue_command.mention}",
                 description=f"[{track.title}]({track.uri})"
             )
+
+            embed.set_footer(text=f"Length: {self.__format_track_length(track.length)}")
 
             await ctx.respond(embed=embed)
 
@@ -239,6 +247,27 @@ class Music(commands.Cog):
             await vc.seek(0)
 
         await ctx.respond(":stop_button:")
+    
+
+    @discord.slash_command(
+        description="Set playback volume (0-100)"
+    )
+    @discord.guild_only()
+    async def setvolume(self, ctx: discord.ApplicationContext, volume: int):
+        check_user_same_vc = await self.__check_user_same_vc(ctx)
+
+        if not check_user_same_vc:
+            return
+        
+        # Get current voice channel the bot connected to
+        vc = cast(wavelink.Player, ctx.voice_client)
+
+        # Bound volume value to 0-100
+        volume = min(max(volume, 0), 100)
+
+        # Set the player volume
+        await vc.set_volume(volume)
+        await ctx.respond(f"Playback volume set at {volume}%")
 
 
     @discord.slash_command(
@@ -278,7 +307,9 @@ class Music(commands.Cog):
 
         if vc.current:
             track = vc.current
-            embed_content += f"[{track.title}]({track.uri})\n"
+            position = self.__format_track_length(int(vc.position))
+            duration = self.__format_track_length(track.length)
+            embed_content += f"[{track.title}]({track.uri}) ({position}/{duration})\n"
         else:
             embed_content += "*None*\n"
         
@@ -287,7 +318,8 @@ class Music(commands.Cog):
 
         if not vc.queue.is_empty:
             track_contents = [
-                f"{i+1}. [{track.title}]({track.uri})" for i, track in enumerate(vc.queue)
+                f"{i+1}. [{track.title}]({track.uri}) ({self.__format_track_length(track.length)})" 
+                for i, track in enumerate(vc.queue)
             ]
             embed_content += "\n".join(track_contents)
         else:
@@ -297,7 +329,8 @@ class Music(commands.Cog):
         if vc.queue.is_empty and not vc.auto_queue.is_empty:
             embed_content += "\n**Next in auto-queue**:\n"
             track_contents = [
-                f"{i+1}. [{track.title}]({track.uri})" for i, track in enumerate(list(vc.auto_queue)[:5])
+                f"{i+1}. [{track.title}]({track.uri}) ({self.__format_track_length(track.length)})"
+                for i, track in enumerate(list(vc.auto_queue)[:5])
             ]
             embed_content += "\n".join(track_contents)
         
@@ -306,6 +339,8 @@ class Music(commands.Cog):
             title="Queue",
             description=embed_content
         )
+
+        embed.set_footer(text=f"Volume: {vc.volume}%")
 
         await ctx.respond(embed=embed)
 
@@ -364,6 +399,25 @@ class Music(commands.Cog):
             return False
 
         return True
+    
+
+    def __format_track_length(self, length: int) -> str:
+        td = timedelta(milliseconds=length)
+        seconds = int(td.total_seconds())
+
+        hours = seconds // 3600
+        seconds %= 3600
+
+        minutes = seconds // 60
+        seconds %= 60
+
+        duration_str = f"{minutes:02}:{seconds:02}"
+        
+        if hours > 0:
+            # Show hour if length is more than one hour
+            duration_str = f"{hours:02}:{duration_str}"
+
+        return duration_str
 
 
 def setup(bot: discord.Bot):
