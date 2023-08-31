@@ -32,7 +32,7 @@ class Music(commands.Cog):
 
     @commands.Cog.listener()
     async def on_ready(self):
-        node = wavelink.Node(uri=WavelinkConfig.URI, password=WavelinkConfig.PASSWORD)
+        node = wavelink.Node(uri=WavelinkConfig.URL, password=WavelinkConfig.PASSWORD)
         await wavelink.NodePool.connect(client=self.bot, nodes=[node])
 
 
