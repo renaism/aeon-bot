@@ -21,7 +21,7 @@ source venv/bin/activate
 
 - Install requirements
 ```bash
-pip install -r requirements.txt
+pip install --no-deps -r requirements.txt
 ```
 
 - Configure environment variables
