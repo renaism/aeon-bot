@@ -8,6 +8,7 @@ from enum import Enum
 from typing import Any, cast
 
 from config import BotConfig, WavelinkConfig
+from src.bot import Bot
 from src.helper import get_member_voice_channel
 
 
@@ -35,7 +36,7 @@ class Player(wavelink.Player):
 
 
 class Music(commands.Cog):
-    def __init__(self, bot: discord.Bot):
+    def __init__(self, bot: Bot):
         self.bot = bot
     
 
@@ -286,6 +287,65 @@ class Music(commands.Cog):
     
 
     @discord.slash_command(
+        description="Remove track at the specified index from the queue"
+    )
+    @discord.guild_only()
+    async def removequeue(self, ctx: discord.ApplicationContext, index: int):
+        check_user_same_vc = await self.__check_user_same_vc(ctx)
+
+        if not check_user_same_vc:
+            return
+        
+        # Get current voice channel the bot connected to
+        vc = cast(Player, ctx.voice_client)
+
+        if vc.queue.is_empty:
+            await ctx.respond(
+                "Queue is empty!",
+                ephemeral=True,
+                delete_after=BotConfig.EPHEMERAL_MSG_DURATION
+            )
+            return
+        
+        if index < 1 or index > vc.queue.count:
+            await ctx.respond(
+                "Index out of range!",
+                ephemeral=True,
+                delete_after=BotConfig.EPHEMERAL_MSG_DURATION
+            )
+            return
+        
+        # Remove the track at the specified index
+        # Note: Queue index starts at 0 where listing from /queue starts at 1, hence index-1
+        track = vc.queue[index-1]
+        del vc.queue[index-1]
+
+        embed = discord.Embed(
+            title=f"Removed from {self.bot.get_slash_command('queue').mention}",
+            description=f"[{track.title}]({track.uri})"
+        )
+
+        await ctx.respond(embed=embed)
+    
+
+    @discord.slash_command(
+        description="Empty the queue"
+    )
+    @discord.guild_only()
+    async def clearqueue(self, ctx: discord.ApplicationContext):
+        check_user_same_vc = await self.__check_user_same_vc(ctx)
+
+        if not check_user_same_vc:
+            return
+        
+        # Get current voice channel the bot connected to
+        vc = cast(Player, ctx.voice_client)
+
+        vc.queue.clear()
+        await ctx.respond(":white_check_mark:")
+    
+
+    @discord.slash_command(
         description="Set playback volume (0-100)"
     )
     @discord.guild_only()
@@ -486,5 +546,5 @@ class Music(commands.Cog):
         return duration_str
 
 
-def setup(bot: discord.Bot):
+def setup(bot: Bot):
     bot.add_cog(Music(bot))
