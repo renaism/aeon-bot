@@ -20,10 +20,17 @@ class PlayAction(Enum):
     NOW = "now"
 
 
+class LoopType(Enum):
+    OFF = "off"
+    ONE = "one"
+    ALL = "all"
+
+
 class Player(wavelink.Player):
     def __init__(self, command_channel: discord.TextChannel, *args: Any, **kwargs: Any):
         super().__init__(*args, **kwargs)
         self.autoplay = True
+        self.loop = LoopType.OFF
         self.command_channel = command_channel
 
 
@@ -268,6 +275,36 @@ class Music(commands.Cog):
         # Set the player volume
         await vc.set_volume(volume)
         await ctx.respond(f"Playback volume set at {volume}%")
+    
+
+    @discord.slash_command(
+        description="Set playback loop"
+    )
+    @discord.guild_only()
+    async def setloop(self, ctx: discord.ApplicationContext, loop: LoopType):
+        check_user_same_vc = await self.__check_user_same_vc(ctx)
+
+        if not check_user_same_vc:
+            return
+        
+        # Get current voice channel the bot connected to
+        vc = cast(Player, ctx.voice_client)
+        vc.loop = loop
+
+        if loop == LoopType.ONE:
+            vc.queue.loop = True
+            vc.queue.loop_all = False
+            message = "Now looping the current track"
+        elif loop == LoopType.ALL:
+            vc.queue.loop = False
+            vc.queue.loop_all = True
+            message = "Now looping the queue"
+        else:
+            vc.queue.loop = False
+            vc.queue.loop_all = False
+            message = "Looping is disabled"
+        
+        await ctx.respond(message)
 
 
     @discord.slash_command(
@@ -298,7 +335,7 @@ class Music(commands.Cog):
             return
         
         # Get current Player
-        vc = cast(wavelink.Player, ctx.voice_client)
+        vc = cast(Player, ctx.voice_client)
 
         embed_content = ""
 
@@ -340,7 +377,7 @@ class Music(commands.Cog):
             description=embed_content
         )
 
-        embed.set_footer(text=f"Volume: {vc.volume}%")
+        embed.set_footer(text=f"Volume: {vc.volume}% | Loop: {vc.loop.value}")
 
         await ctx.respond(embed=embed)
 
