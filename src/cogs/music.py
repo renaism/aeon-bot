@@ -229,6 +229,35 @@ class Music(commands.Cog):
     
 
     @discord.slash_command(
+        description="Play the previous track"
+    )
+    @discord.guild_only()
+    async def prev(self, ctx: discord.ApplicationContext):
+        check_user_same_vc = await self.__check_user_same_vc(ctx)
+
+        if not check_user_same_vc:
+            return
+        
+        # Get current voice channel the bot connected to
+        vc = cast(Player, ctx.voice_client)
+
+        if vc.queue.history.count < 2:
+            # If there is no previous track in history,
+            # simply seek to the beginning of the current track
+            await vc.seek(0)
+            await vc.resume()
+        else:
+            if vc.current:
+                # Set aside currently playing track to the queue
+                # Note: Currently playing track is already in history
+                vc.queue.put_at_front(vc.queue.history.pop())
+             
+            await vc.play(vc.queue.history.pop())
+        
+        await ctx.respond(":track_previous:")
+    
+
+    @discord.slash_command(
         description="Stop track playback"
     )
     @discord.guild_only()
