@@ -8,7 +8,8 @@ from enum import Enum
 from typing import Any, cast
 
 from config import BotConfig, WavelinkConfig
-from src.helper import get_member_voice_channel
+from src.bot import Bot
+from src.helper import get_member_voice_channel, get_youtube_search_suggestion
 
 
 _log = logging.getLogger(__name__)
@@ -20,15 +21,22 @@ class PlayAction(Enum):
     NOW = "now"
 
 
+class LoopType(Enum):
+    OFF = "off"
+    ONE = "one"
+    ALL = "all"
+
+
 class Player(wavelink.Player):
     def __init__(self, command_channel: discord.TextChannel, *args: Any, **kwargs: Any):
         super().__init__(*args, **kwargs)
         self.autoplay = True
+        self.loop = LoopType.OFF
         self.command_channel = command_channel
 
 
 class Music(commands.Cog):
-    def __init__(self, bot: discord.Bot):
+    def __init__(self, bot: Bot):
         self.bot = bot
     
 
@@ -65,6 +73,7 @@ class Music(commands.Cog):
         description="Play a track with a given search keyword"
     )
     @discord.guild_only()
+    @discord.option("search", description="Search keyword", autocomplete=get_youtube_search_suggestion)
     async def play(self, ctx: discord.ApplicationContext, search: str, action: PlayAction = PlayAction.QUEUE): 
         check_user_in_vc, member_vc = await self.__check_user_in_vc(ctx)
 
@@ -222,6 +231,35 @@ class Music(commands.Cog):
     
 
     @discord.slash_command(
+        description="Play the previous track"
+    )
+    @discord.guild_only()
+    async def prev(self, ctx: discord.ApplicationContext):
+        check_user_same_vc = await self.__check_user_same_vc(ctx)
+
+        if not check_user_same_vc:
+            return
+        
+        # Get current voice channel the bot connected to
+        vc = cast(Player, ctx.voice_client)
+
+        if vc.queue.history.count < 2:
+            # If there is no previous track in history,
+            # simply seek to the beginning of the current track
+            await vc.seek(0)
+            await vc.resume()
+        else:
+            if vc.current:
+                # Set aside currently playing track to the queue
+                # Note: Currently playing track is already in history
+                vc.queue.put_at_front(vc.queue.history.pop())
+             
+            await vc.play(vc.queue.history.pop())
+        
+        await ctx.respond(":track_previous:")
+    
+
+    @discord.slash_command(
         description="Stop track playback"
     )
     @discord.guild_only()
@@ -250,6 +288,65 @@ class Music(commands.Cog):
     
 
     @discord.slash_command(
+        description="Remove track at the specified index from the queue"
+    )
+    @discord.guild_only()
+    async def removequeue(self, ctx: discord.ApplicationContext, index: int):
+        check_user_same_vc = await self.__check_user_same_vc(ctx)
+
+        if not check_user_same_vc:
+            return
+        
+        # Get current voice channel the bot connected to
+        vc = cast(Player, ctx.voice_client)
+
+        if vc.queue.is_empty:
+            await ctx.respond(
+                "Queue is empty!",
+                ephemeral=True,
+                delete_after=BotConfig.EPHEMERAL_MSG_DURATION
+            )
+            return
+        
+        if index < 1 or index > vc.queue.count:
+            await ctx.respond(
+                "Index out of range!",
+                ephemeral=True,
+                delete_after=BotConfig.EPHEMERAL_MSG_DURATION
+            )
+            return
+        
+        # Remove the track at the specified index
+        # Note: Queue index starts at 0 where listing from /queue starts at 1, hence index-1
+        track = vc.queue[index-1]
+        del vc.queue[index-1]
+
+        embed = discord.Embed(
+            title=f"Removed from {self.bot.get_slash_command('queue').mention}",
+            description=f"[{track.title}]({track.uri})"
+        )
+
+        await ctx.respond(embed=embed)
+    
+
+    @discord.slash_command(
+        description="Empty the queue"
+    )
+    @discord.guild_only()
+    async def clearqueue(self, ctx: discord.ApplicationContext):
+        check_user_same_vc = await self.__check_user_same_vc(ctx)
+
+        if not check_user_same_vc:
+            return
+        
+        # Get current voice channel the bot connected to
+        vc = cast(Player, ctx.voice_client)
+
+        vc.queue.clear()
+        await ctx.respond(":white_check_mark:")
+    
+
+    @discord.slash_command(
         description="Set playback volume (0-100)"
     )
     @discord.guild_only()
@@ -268,6 +365,36 @@ class Music(commands.Cog):
         # Set the player volume
         await vc.set_volume(volume)
         await ctx.respond(f"Playback volume set at {volume}%")
+    
+
+    @discord.slash_command(
+        description="Set playback loop"
+    )
+    @discord.guild_only()
+    async def setloop(self, ctx: discord.ApplicationContext, loop: LoopType):
+        check_user_same_vc = await self.__check_user_same_vc(ctx)
+
+        if not check_user_same_vc:
+            return
+        
+        # Get current voice channel the bot connected to
+        vc = cast(Player, ctx.voice_client)
+        vc.loop = loop
+
+        if loop == LoopType.ONE:
+            vc.queue.loop = True
+            vc.queue.loop_all = False
+            message = "Now looping the current track"
+        elif loop == LoopType.ALL:
+            vc.queue.loop = False
+            vc.queue.loop_all = True
+            message = "Now looping the queue"
+        else:
+            vc.queue.loop = False
+            vc.queue.loop_all = False
+            message = "Looping is disabled"
+        
+        await ctx.respond(message)
 
 
     @discord.slash_command(
@@ -298,7 +425,7 @@ class Music(commands.Cog):
             return
         
         # Get current Player
-        vc = cast(wavelink.Player, ctx.voice_client)
+        vc = cast(Player, ctx.voice_client)
 
         embed_content = ""
 
@@ -340,7 +467,7 @@ class Music(commands.Cog):
             description=embed_content
         )
 
-        embed.set_footer(text=f"Volume: {vc.volume}%")
+        embed.set_footer(text=f"Volume: {vc.volume}% | Loop: {vc.loop.value}")
 
         await ctx.respond(embed=embed)
 
@@ -420,5 +547,5 @@ class Music(commands.Cog):
         return duration_str
 
 
-def setup(bot: discord.Bot):
+def setup(bot: Bot):
     bot.add_cog(Music(bot))
