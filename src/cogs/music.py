@@ -9,7 +9,7 @@ from typing import Any, cast
 
 from config import BotConfig, WavelinkConfig
 from src.bot import Bot
-from src.helper import get_member_voice_channel
+from src.helper import get_member_voice_channel, get_youtube_search_suggestion
 
 
 _log = logging.getLogger(__name__)
@@ -73,6 +73,7 @@ class Music(commands.Cog):
         description="Play a track with a given search keyword"
     )
     @discord.guild_only()
+    @discord.option("search", description="Search keyword", autocomplete=get_youtube_search_suggestion)
     async def play(self, ctx: discord.ApplicationContext, search: str, action: PlayAction = PlayAction.QUEUE): 
         check_user_in_vc, member_vc = await self.__check_user_in_vc(ctx)
 
