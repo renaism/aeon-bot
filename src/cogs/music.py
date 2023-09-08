@@ -372,6 +372,8 @@ class Music(commands.Cog):
         vc = cast(Player, ctx.voice_client)
 
         vc.queue.clear()
+        vc.auto_queue.clear()
+
         await ctx.respond(":white_check_mark:")
     
 
