@@ -9,7 +9,7 @@ from typing import Any, cast
 
 from config import BotConfig, WavelinkConfig
 from src.bot import Bot
-from src.helper import get_member_voice_channel, get_youtube_search_suggestion
+from src.helper import get_member_voice_channel, get_youtube_search_suggestion, timestamp_to_seconds
 
 
 _log = logging.getLogger(__name__)
@@ -211,6 +211,35 @@ class Music(commands.Cog):
             await vc.play(vc.auto_queue.pop())
         
         await ctx.respond(":arrow_forward:")
+    
+
+    @discord.slash_command(
+        description="Seek to specific time"
+    )
+    @discord.guild_only()
+    @discord.option("timestamp", description="MM:SS or HH:MM:SS")
+    async def seek(self, ctx: discord.ApplicationContext, timestamp: str):
+        check_user_same_vc = await self.__check_user_same_vc(ctx)
+
+        if not check_user_same_vc:
+            return
+        
+        # Get current voice channel the bot connected to
+        vc = cast(wavelink.Player, ctx.voice_client)
+
+        seconds = timestamp_to_seconds(timestamp)
+
+        if not seconds:
+            await ctx.respond(
+                "Timestamp is not valid!",
+                ephemeral=True,
+                delete_after=BotConfig.EPHEMERAL_MSG_DURATION
+            )
+
+            return
+
+        await vc.seek(seconds * 1000)
+        await ctx.respond(":white_check_mark:")
 
 
     @discord.slash_command(
