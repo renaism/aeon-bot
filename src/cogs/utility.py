@@ -1,5 +1,6 @@
 import config
 import discord
+import re
 
 from ..helper import get_member_voice_channel
 
@@ -91,6 +92,28 @@ class Utility(commands.Cog):
                             if vc_mem != member)
 
         return await ctx.respond(f"**{member.display_name}**: {mentions}")
+    
+
+    @discord.slash_command(
+        description="Get the direct link for a youtube video thumbnail image."
+    )
+    async def ytthumbnail(self, ctx: discord.ApplicationContext, link: str):
+        # Parse video id from link
+        match = re.search(r"(?:youtube.com\/watch\?v=|youtu.be\/)([0-9A-Za-z_-]{11}).*", link)
+
+        if not match:
+            await ctx.respond(
+                "The link is not a valid YouTube video URL!",
+                ephemeral=True,
+                delete_after=config.BotConfig.EPHEMERAL_MSG_DURATION
+            )
+
+            return
+        
+        video_id = match.group(1)
+        thumbnail_url = f"https://img.youtube.com/vi/{video_id}/maxresdefault.jpg"
+
+        await ctx.respond(thumbnail_url)
 
 
 def setup(bot: discord.Bot):
