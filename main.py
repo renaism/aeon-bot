@@ -20,9 +20,8 @@ bot = Bot(intents=intents)
 cogs = [
     'src.cogs.general',
     'src.cogs.utility',
-    # 'src.cogs.activity_monitor',
-    # 'src.cogs.music',
-    # 'src.cogs.music_v2'
+    'src.cogs.activity_monitor',
+    #'src.cogs.music',
 ]
 
 
