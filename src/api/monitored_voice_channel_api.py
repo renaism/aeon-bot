@@ -23,15 +23,11 @@ class MonitoredVoiceChannelAPI(BaseAPI):
     def Create(
         cls,
         guild_id: int,
-        channel_id: int,
-        default_name: str,
-        icon: str | None
+        channel_id: int
     ) -> Response:
         payload = {
             "guild_id": guild_id,
-            "channel_id": channel_id,
-            "default_name": default_name,
-            "icon": icon,
+            "channel_id": channel_id
         }
 
         return super().Create(payload=payload)
