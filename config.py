@@ -2,12 +2,13 @@ import os
 
 from dotenv import load_dotenv
 
-load_dotenv()
+load_dotenv(override=True)
 
 
 class BotConfig(object):
     ENV = os.getenv("ENV", default="production")
     EPHEMERAL_MSG_DURATION = int(os.getenv("EPHEMERAL_MSG_DURATION", default=10))
+    DEBUG_GUILD_ID = int(os.getenv("DEBUG_GUILD_ID"))
 
 
 class DiscordConfig(object):
@@ -17,7 +18,6 @@ class DiscordConfig(object):
 class APIConfig(object):
     KEY = os.getenv("API_KEY")
     URL = os.getenv("API_URL")
-    
 
 
 class ActivityMonitorConfig(object):
