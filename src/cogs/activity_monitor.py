@@ -59,12 +59,12 @@ class ActivityMonitor(commands.Cog):
             if not isinstance(channel, discord.VoiceChannel):
                 continue
 
-            new_name = self.__get_new_vc_name(channel, row["default_name"], row["icon"])
+            new_status = self.__get_new_vc_status(channel)
 
-            if channel.name == new_name:
+            if channel.status == new_status:
                 continue
 
-            await channel.edit(name=new_name)
+            await channel.set_status(new_status, reason="activity monitor")
 
 
     @activitymonitor.command(
@@ -94,13 +94,11 @@ class ActivityMonitor(commands.Cog):
             for i, row in enumerate(data):
                 channel = cast(discord.VoiceChannel, self.bot.get_channel(row["channel_id"]))
 
-                vc_content = f"{i+1}. {channel.mention}" \
-                    + f"\n\tDefault Name: {row['default_name']}" \
-                    + f"\n\tIcon: {row['icon'] or '*Default*'}"
+                vc_content = f"{i+1}. {channel.mention}"
                 
                 vc_contents.append(vc_content)
         
-        embed_content = "\n\n".join(vc_contents)
+        embed_content = "\n".join(vc_contents)
 
         embed = discord.Embed(
             title="Monitored Voice Channels",
@@ -117,57 +115,10 @@ class ActivityMonitor(commands.Cog):
     @discord.default_permissions(administrator=True)
     async def addchannel(self, 
         ctx: discord.ApplicationContext,
-        channel: discord.VoiceChannel,
-        default_name: str | None = None,
-        icon: str | None = None
-    ):
-        # If default name is not specified,
-        # use the current voice channel name
-        if default_name is None:
-            default_name = channel.name
-        
+        channel: discord.VoiceChannel
+    ):        
         response = MonitoredVoiceChannelAPI.Create(
             guild_id=channel.guild.id,
-            channel_id=channel.id,
-            default_name=default_name,
-            icon=icon
-        )
-
-        # Request failed
-        if not response:
-            await api_error_response(ctx, response)
-            return
-        
-        data = response.json()
-        
-        embed_content = f"Now monitoring {channel.mention}" \
-            + f"\nDefault Name: {data['default_name']}" \
-            + f"\nIcon: {data['icon'] or '*Default*'}"
-        
-        embed = discord.Embed(
-            title="Added Voice Channel",
-            description=embed_content
-        )
-
-        await ctx.respond(embed=embed)
-    
-
-    @activitymonitor.command(
-        description="Edit monitored voice channel."
-    )
-    @discord.guild_only()
-    @discord.default_permissions(administrator=True)
-    async def editchannel(self,
-        ctx: discord.ApplicationContext,
-        channel: discord.VoiceChannel,
-        default_name: str | None = None,
-        icon: str | None = None
-    ):
-        guild_id = cast(int, ctx.guild_id)
-
-        # Get current monitoring data
-        response = MonitoredVoiceChannelAPI.Detail(
-            guild_id=guild_id,
             channel_id=channel.id
         )
 
@@ -176,32 +127,10 @@ class ActivityMonitor(commands.Cog):
             await api_error_response(ctx, response)
             return
         
-        channel_data = response.json()
-        
-        # Don't change default name if no new default name is provided
-        if default_name is None:
-            default_name = channel_data["default_name"]
-
-        response = MonitoredVoiceChannelAPI.Edit(
-            guild_id=guild_id,
-            channel_id=channel.id,
-            default_name=default_name,
-            icon=icon
-        )
-
-        # Request failed
-        if not response:
-            await api_error_response(ctx, response)
-            return
-        
-        data = response.json()
-
-        embed_content = f"Now monitoring {channel.mention}" \
-            + f"\nDefault Name: {data['default_name']}" \
-            + f"\nIcon: {data['icon'] or '*Default*'}"
+        embed_content = f"Now monitoring {channel.mention}"
         
         embed = discord.Embed(
-            title="Edited Voice Channel",
+            title="Added Voice Channel",
             description=embed_content
         )
 
@@ -229,8 +158,6 @@ class ActivityMonitor(commands.Cog):
         if not response:
             await api_error_response(ctx, response)
             return
-        
-        channel_data = response.json()
 
         response = MonitoredVoiceChannelAPI.Delete(
             guild_id=guild_id,
@@ -243,10 +170,6 @@ class ActivityMonitor(commands.Cog):
             return
 
         embed_content = f"{channel.mention} is not being monitored anymore"
-
-        if channel.name != channel_data["default_name"]:
-            embed_content += f"\n\nChannel name is currently not the default ({channel_data['default_name']})." \
-                + "\nDon't forget to revert it yourself if necessary."
 
         embed = discord.Embed(
             title="Deleted Voice Channel",
@@ -397,16 +320,12 @@ class ActivityMonitor(commands.Cog):
         await ctx.respond(embed=embed)
 
 
-    def __get_new_vc_name(self, 
-        vc: discord.VoiceChannel,
-        default_name: str,
-        icon: str | None
-    ) -> str:
+    def __get_new_vc_status(self, vc: discord.VoiceChannel) -> str | None:
         guild_id = vc.guild.id
         vc_members = vc.members
         
         if len(vc_members) == 0:
-            return default_name
+            return None
         
         activity_count = defaultdict(int)
 
@@ -425,13 +344,12 @@ class ActivityMonitor(commands.Cog):
                 activity_count[activity_name] += 1
             
         if len(activity_count) == 0:
-            return default_name
+            return None
 
         activities = sorted(activity_count, key=activity_count.__getitem__, 
                             reverse=True)
         
-        if icon is None:
-            icon = "🎮"
+        icon = "🎮"
 
         if len(activities) == 1:
             new_name = f"{icon} {activities[0]}"

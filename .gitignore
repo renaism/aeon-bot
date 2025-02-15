@@ -164,3 +164,6 @@ cython_debug/
 
 # Bot extensions
 ext/
+
+# Debug and testing
+test.py

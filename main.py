@@ -7,14 +7,20 @@ from src import Bot
 
 
 # Setup logging
-if config.BotConfig.ENV == "production":
-    logging.basicConfig(level=logging.WARNING)
-else:
+if config.BotConfig.ENV == "development":
     logging.basicConfig(level=logging.INFO)
+else:
+    logging.basicConfig(level=logging.WARNING)
+
+# Debug guild
+if config.BotConfig.ENV == "development" and config.BotConfig.DEBUG_GUILD_ID:
+    debug_guilds = [config.BotConfig.DEBUG_GUILD_ID]
+else:
+    debug_guilds = None
 
 # Bot configurations
 intents = discord.Intents.all()
-bot = Bot(intents=intents)
+bot = Bot(intents=intents, debug_guilds=debug_guilds)
 
 # Load internal cogs
 cogs = [
